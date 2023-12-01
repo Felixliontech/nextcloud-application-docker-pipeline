@@ -1,0 +1,38 @@
+pipeline {
+
+    tools{
+
+        maven 'maven_v_3.9.5'
+    }
+    agent any
+
+    environment {
+        registry = "418649672840.dkr.ecr.us-east-1.amazonaws.com/docker-jenkins-integration-demo"
+    }
+    stages {
+        stage('Checkout from Version Control') {
+            steps {
+                checkout scmGit(branches: [[name: '*/docker']], extensions: [], userRemoteConfigs: [[url: 'https://github.com/Felixliontech/nextcloud-application-docker-pipeline.git']])
+            }
+        }
+        
+        stage ("Build Docker Image") {
+            steps {
+                script {
+                    dockerImage = docker.build registry
+                    dockerImage.tag("$BUILD_NUMBER")
+                }
+            }
+        }
+        
+        stage ("Push to ECR") {
+            steps {
+                script {
+                    sh 'aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 418649672840.dkr.ecr.us-east-1.amazonaws.com'
+                    sh 'docker push  418649672840.dkr.ecr.us-east-1.amazonaws.com/docker-jenkins-integration-demo:$BUILD_NUMBER'
+                    
+                }
+            }
+        }    
+    }
+}
